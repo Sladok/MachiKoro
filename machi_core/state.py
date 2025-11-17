@@ -1,63 +1,105 @@
-from typing import List, Any
-from cards import Card
-from random import randint, seed
+"""
+Стурктуры данных для состояния игры
 
-def _roll(n):
-    rolls = list()
-    for _ in range(n):
-        seed(randint(1, 500000000000000000))
-        roll = randint(1, 6)
-        rolls.append(roll)
-    return rolls
+Нет логики ходов, кубиков и т.д.
+Только то, что в памяти, игроки, рынок, фаза, последний бросок
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, List, Optional
+
+from .cards import TRAIN_STATION
 
 
-class GameState:
-    def __init__(self, players):
-        self.players: List[PlayerState] = players
-        self.now_turn: PlayerState = None
-        self.current_phase: str = ""  # ?
-        self.__max_players: int = 2
-        self.last_roll: List[int] = []
+class Phase(str, Enum):
+    """
+    Фаза ходов.
+    На этапы, чтобы UI и бот потом реагировали на шаги
+    """
 
-    def process_phase(self):
-        if self.current_phase == "Бросок кубика":
-            rolls = _roll(1)
-            self.current_phase = "Активация карт"
-            self.last_roll = rolls
-            
-        if self.current_phase == "Активация карт":
-            
-            for player in self.players:
-                for card in player.card_list:
-                    if sum(self.last_roll) in card.roll_num:
-                        if card.color_type == "blue":
-                            if card.effect_type == "получить":
-                                player.money += card.money
-                                print(f"{player.id} получил деньги за карту {card.name}")
+    ROLL = "roll"
+    RESOLVE = "resolve"
+    BUY = "buy"
+    GAME_OVER = "game_over"
 
-                        
-                        elif card.color_type == "green":
-                            if card.effect_type == "получить" and player.id == self.now_turn.id:
-                                player.money += card.money
-                                print(f"{player.id} получил деньги за карту {card.name}")
-            
-        print()
-        self.now_turn = self.players[self.now_turn.id + 1] if self.now_turn.id < self.__max_players - 1 else self.players[0]
-        self.current_phase = "Бросок кубика"
 
+@dataclass
 class PlayerState:
-    def __init__(self, id: int, start_money: int = 3):
-        self.id = id
-        self.money = start_money 
-        self.card_list: List[Card] = []
+    """
+    Состояние игрока:
+        - Монеты;
+        - Предприятия (карта --> количество)
+        - Достопримечательности (id --> построена ли)
+    """
+
+    coins: int = 0
+    establishments: Dict[str, int] = field(default_factory=dict)
+    landmarks: Dict[str, bool] = field(default_factory=dict)
+
+    def count_of(self, card_id: str) -> int:
+        return self.establishments.get(card_id, 0)
+
+    def add_card(self, card_id: str, count: int = 1) -> None:
+        self.establishments[card_id] = self.establishments.get(card_id, 0) + count
+    
+    def has_built(self, landmark_id: str) -> bool:
+        return self.landmarks.get(landmark_id, False)
+
+    def build_landmark(self, landmark_id: str) -> int:
+        self.landmarks[landmark_id] = True
 
 
+@dataclass
 class MarketState:
-    def __init__(self):
-        self.cards: List[Card] = []
+    """
+    Рынок:
+        - что на столе лежит и сколько копий
+    """
 
-class Deck:
-    def __init__(self):
-        self.cards = [
+    available: Dict[str, int] = field(default_factory=dict)
+
+    def can_buy(self, card_id: str) -> bool:
+        return self.available.get(card_id, 0) > 0
+
+    def take_one(self, card_id: str) -> None:
+        if self.available.get(card_id, 0) <= 0:
+            raise ValueError(f"Нет доступных карт {card_id} на рынке")
+        self.available[card_id] -= 1
+
+
+@dataclass
+class GameState:
+    """
+    Полное состояние партии только данные.
+    """
+
+    players: List[PlayerState]
+    current_player: int  # индекс в players
+    phase: Phase
+    market: MarketState
+    last_roll: Optional[int] = None
+
+    done: bool = True
+    winner: Optional[int] = None
+
+    def current_player_state(self) -> PlayerState:
+        return self.players[self.current_player]
+
+    def next_player_index(self) -> int:
+        return (self.current_player + 1) % len(self.players)
+
+    def check_victory(self) -> Optional[int]:
+        """
+        Возвращает индекс победителя или None, если никто ещё не выиграл.
+
+        # Пока что только train_station
+        """
+
+        for idx, p in enumerate(self.players):
+            if p.has_built(TRAIN_STATION):
+                return idx
             
-        ]
+        return None
