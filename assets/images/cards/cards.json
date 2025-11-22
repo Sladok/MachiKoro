@@ -1,0 +1,382 @@
+{
+  "wheat_field": {
+    "name": "Пшеничное поле",
+    "color": "blue",
+    "card_type": "establishment",
+    "cost": 1,
+    "activation_numbers": [1],
+    "income": 1,
+    "image": "0.png",
+    "version": "normal"
+  },
+  "bakery": {
+    "name": "Пекарня",
+    "color": "green",
+    "card_type": "establishment",
+    "cost": 1,
+    "activation_numbers": [2, 3],
+    "income": 1,
+    "image": "1.png",
+    "version": "normal"
+  },
+  "forest": {
+    "name": "Заповедник",
+    "color": "blue",
+    "card_type": "establishment",
+    "cost": 3,
+    "activation_numbers": [5],
+    "income": 1,
+    "image": "2.png",
+    "version": "normal"
+  },
+  "convenience_store": {
+    "name": "Цветник",
+    "color": "blue",
+    "card_type": "establishment",
+    "cost": 2,
+    "activation_numbers": [4],
+    "income": 1,
+    "image": "3.png",
+    "version": "plus"
+  },
+  "vineyard": {
+    "name": "Виноградник",
+    "color": "blue",
+    "card_type": "establishment",
+    "cost": 3,
+    "activation_numbers": [7],
+    "income": 3,
+    "image": "4.png",
+    "version": "sharp"
+  },
+  "mine": {
+    "name": "Рудник",
+    "color": "blue",
+    "card_type": "establishment",
+    "cost": 6,
+    "activation_numbers": [9],
+    "income": 5,
+    "image": "5.png",
+    "version": "normal"
+  },
+  "fishing_boat": {
+    "name": "Рыбацкий баркас",
+    "color": "blue",
+    "card_type": "establishment",
+    "cost": 2,
+    "activation_numbers": [8],
+    "income": 3,
+    "image": "6.png",
+    "version": "plus"
+  },
+  "ranch": {
+    "name": "Ферма",
+    "color": "blue",
+    "card_type": "establishment",
+    "cost": 1,
+    "activation_numbers": [2],
+    "income": 1,
+    "image": "7.png",
+    "version": "normal"
+  },
+  "train_station": {
+    "name": "Вокзал",
+    "color": "yellow",
+    "card_type": "landmark",
+    "cost": 4,
+    "activation_numbers": [],
+    "income": 0,
+    "image": "8.png",
+    "version": "normal"
+  },
+  "department_store": {
+    "name": "Универмаг",
+    "color": "green",
+    "card_type": "establishment",
+    "cost": 0,
+    "activation_numbers": [2],
+    "income": 2,
+    "image": "9.png",
+    "version": "sharp"
+  },
+  "bakery_buy": {
+    "name": "Пекарня",
+    "color": "green",
+    "card_type": "establishment",
+    "cost": 1,
+    "activation_numbers": [2, 3],
+    "income": 1,
+    "image": "10.png",
+    "version": "normal"
+  },
+  "supermarket": {
+    "name": "Супермаркет",
+    "color": "green",
+    "card_type": "establishment",
+    "cost": 2,
+    "activation_numbers": [4],
+    "income": 3,
+    "image": "11.png",
+    "version": "normal"
+  },
+  "credit_bureau": {
+    "name": "Кредитное бюро",
+    "color": "green",
+    "card_type": "establishment",
+    "cost": 0,
+    "activation_numbers": [5, 6],
+    "income": -2,
+    "image": "12.png",
+    "version": "sharp"
+  },
+  "building_demolition_company": {
+    "name": "Компания по сносузданий",
+    "color": "green",
+    "card_type": "establishment",
+    "cost": 2,
+    "activation_numbers": [4],
+    "income": 8,
+    "image": "13.png",
+    "version": "sharp"
+  },
+  "flower_shop": {
+    "name": "Цветочный магазин",
+    "color": "green",
+    "card_type": "establishment",
+    "cost": 1,
+    "activation_numbers": [6],
+    "income": 1,
+    "image": "14.png",
+    "version": "plus"
+  },
+  "winery": {
+    "name": "Винный завод",
+    "color": "green",
+    "card_type": "establishment",
+    "cost": 3,
+    "activation_numbers": [9],
+    "income": 6,
+    "image": "15.png",
+    "version": "sharp"
+  },
+  "furniture_factory": {
+    "name": "Мебельная фабрика",
+    "color": "green",
+    "card_type": "establishment",
+    "cost": 3,
+    "activation_numbers": [8],
+    "income": 3,
+    "image": "16.png",
+    "version": "normal"
+  },
+  "cheese_factory": {
+    "name": "Сыроварня",
+    "color": "green",
+    "card_type": "establishment",
+    "cost": 5,
+    "activation_numbers": [7],
+    "income": 3,
+    "image": "17.png",
+    "version": "normal"
+  },
+  "sushi_bar": {
+    "name": "Суши-бар",
+    "color": "red",
+    "card_type": "establishment",
+    "cost": 4,
+    "activation_numbers": [1],
+    "income": 3,
+    "image": "18.png",
+    "version": "plus"
+  },
+  "cafe": {
+    "name": "Кафе",
+    "color": "red",
+    "card_type": "establishment",
+    "cost": 2,
+    "activation_numbers": [3],
+    "income": 1,
+    "image": "19.png",
+    "version": "normal"
+  },
+  "restaurant": {
+    "name": "Ресторан",
+    "color": "red",
+    "card_type": "establishment",
+    "cost": 3,
+    "activation_numbers": [5],
+    "income": 5,
+    "image": "20.png",
+    "version": "sharp"
+  },
+  "burger": {
+    "name": "Бургерная",
+    "color": "red",
+    "card_type": "establishment",
+    "cost": 1,
+    "activation_numbers": [8],
+    "income": 1,
+    "image": "21.png",
+    "version": "plus"
+  },
+  "pizzeria": {
+    "name": "Пиццерия",
+    "color": "red",
+    "card_type": "establishment",
+    "cost": 1,
+    "activation_numbers": [7],
+    "income": 1,
+    "image": "22.png",
+    "version": "plus"
+  },
+  "snack_bar": {
+    "name": "Закусочная",
+    "color": "red",
+    "card_type": "establishment",
+    "cost": 3,
+    "activation_numbers": [9, 10],
+    "income": 2,
+    "image": "23.png",
+    "version": "normal"
+  },
+  "elite_bar": {
+    "name": "Элитный бар",
+    "color": "red",
+    "card_type": "establishment",
+    "cost": 4,
+    "activation_numbers": [12, 13, 14],
+    "income": 1000000,
+    "image": "24.png",
+    "version": "sharp"
+  },
+  "apple_orchard": {
+    "name": "Яблоневый сад",
+    "color": "blue",
+    "card_type": "establishment",
+    "cost": 3,
+    "activation_numbers": [10],
+    "income": 3,
+    "image": "25.png",
+    "version": "normal"
+  },
+  "transport_company": {
+    "name": "Транспортная компания",
+    "color": "green",
+    "card_type": "establishment",
+    "cost": 2,
+    "activation_numbers": [9, 10],
+    "income": 4,
+    "image": "26.png",
+    "version": "sharp"
+  },
+  "wheat_field_buy": {
+    "name": "Пшеничное поле",
+    "color": "blue",
+    "card_type": "establishment",
+    "cost": 1,
+    "activation_numbers": [1],
+    "income": 1,
+    "image": "27.png",
+    "version": "normal"
+  },
+  "cornfield": {
+    "name": "Кукурузное поле",
+    "color": "blue",
+    "card_type": "establishment",
+    "cost": 2,
+    "activation_numbers": [3, 4],
+    "income": 1,
+    "image": "28.png",
+    "version": "sharp"
+  },
+  "trawler": {
+    "name": "Траулер",
+    "color": "blue",
+    "card_type": "establishment",
+    "cost": 5,
+    "activation_numbers": [12, 13, 14],
+    "income": 0,
+    "image": "29.png",
+    "version": "plus"
+  },
+  "town_hall": {
+    "name": "Ратуша",
+    "color": "yellow",
+    "card_type": "landmark",
+    "cost": 0,
+    "activation_numbers": [],
+    "income": 1,
+    "image": "30.png",
+    "version": "plus"
+  },
+  "port": {
+    "name": "Порт",
+    "color": "yellow",
+    "card_type": "landmark",
+    "cost": 2,
+    "activation_numbers": [],
+    "income": 0,
+    "image": "31.png",
+    "version": "plus"
+  },
+  "bank": {
+    "name": "Банк",
+    "color": "yellow",
+    "card_type": "landmark",
+    "cost": 0,
+    "activation_numbers": [],
+    "income": 3,
+    "image": "32.png",
+    "version": "plus"
+  },
+  "shopping_mall": {
+    "name": "Торговый центр",
+    "color": "yellow",
+    "card_type": "landmark",
+    "cost": 10,
+    "activation_numbers": [],
+    "income": 0,
+    "image": "33.png",
+    "version": "normal"
+  },
+  "tv_tower": {
+    "name": "Телебашня",
+    "color": "yellow",
+    "card_type": "landmark",
+    "cost": 16,
+    "activation_numbers": [],
+    "income": 0,
+    "image": "34.png",
+    "version": "normal"
+  },
+  "amusement_park": {
+    "name": "Парк развлечений",
+    "color": "yellow",
+    "card_type": "landmark",
+    "cost": 22,
+    "activation_numbers": [],
+    "income": 0,
+    "image": "35.png",
+    "version": "normal"
+  },
+  "water_park": {
+    "name": "Аквапарк",
+    "color": "yellow",
+    "card_type": "landmark",
+    "cost": 22,
+    "activation_numbers": [],
+    "income": 0,
+    "image": "36.png",
+    "version": "sharp"
+  },
+  "airport": {
+    "name": "Аэропорт",
+    "color": "yellow",
+    "card_type": "landmark",
+    "cost": 30,
+    "activation_numbers": [],
+    "income": 10,
+    "image": "37.png",
+    "version": "plus"
+  }
+}

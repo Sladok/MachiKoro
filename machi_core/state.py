@@ -11,8 +11,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional
 
-from .cards import TRAIN_STATION
-
 
 class Phase(str, Enum):
     """
@@ -34,7 +32,7 @@ class PlayerState:
         - Предприятия (карта --> количество)
         - Достопримечательности (id --> построена ли)
     """
-
+    name: str = ""
     coins: int = 0
     establishments: Dict[str, int] = field(default_factory=dict)
     landmarks: Dict[str, bool] = field(default_factory=dict)
@@ -60,6 +58,10 @@ class MarketState:
     """
 
     available: Dict[str, int] = field(default_factory=dict)
+
+    deck: List[str] = field(default_factory=list)
+
+    max_unique: int = 10
 
     def can_buy(self, card_id: str) -> bool:
         return self.available.get(card_id, 0) > 0
@@ -99,7 +101,7 @@ class GameState:
         """
 
         for idx, p in enumerate(self.players):
-            if p.has_built(TRAIN_STATION):
+            if p.has_built("train_station"):
                 return idx
             
         return None

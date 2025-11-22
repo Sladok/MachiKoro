@@ -5,7 +5,7 @@ import os
 # Добавляем project_root в PYTHONPATH
 sys.path.append(os.path.abspath(".."))
 
-from machi_core.rules import new_game, legal_actions, apply_action, Action, ActionType
+from machi_core.rules import new_game, legal_actions, apply_action
 
 game = new_game(2)
 

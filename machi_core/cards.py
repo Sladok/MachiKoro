@@ -10,6 +10,12 @@ from __future__ import annotations
 from typing import List, Dict
 from enum import Enum
 from dataclasses import dataclass
+import os
+import json 
+
+# путь к cards.json
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CARDS_JSON_PATH = os.path.join(BASE_DIR, "assets", "images", "cards", "cards.json")
 
 
 class CardColor(str, Enum):
@@ -17,12 +23,18 @@ class CardColor(str, Enum):
       GREEN = "green"      # срабатывает только в свой ход
       RED = "red"          # срабатывает в чужой ход
       PURPLE = "purple"    # особые эффектные, обычно ограничение по 1 шт.
+      YELLOW = "yellow"
 
 
 class CardType(str, Enum):
      ESTABLISHMENT = "establishment"      # предприятие
      LANDMARK = "landmark"                # достопримечательность
 
+
+class CardVersion(str, Enum):
+    NORMAL = "normal"   # обычная
+    PLUS   = "plus"     # с +
+    SHARP  = "sharp"    # с #
 
 @dataclass(frozen=True)
 class CardDef:
@@ -36,104 +48,73 @@ class CardDef:
     cost: int
     activation_numbers: List[int]   # на какие значения кубика карта срабатывает
     income: int                     # базовый доход в монетах (для простых карт)
+    image: str | None = None
+    version: CardVersion = CardVersion.NORMAL  # В игре есть 3 версии, это обычные карты, плюс и шарп(#)
 
 
-# Карты
-# Стартовые
-WHEAT_FIELD = "wheat_field"        # пшеничное поле (синяя)
-BAKERY = "bakery"                  # пекарня (зелёная)
+def _load_cards_from_json(path: str = CARDS_JSON_PATH) -> Dict[str, CardDef]:
+    """
+    Читает описание карт из JSON-файла и возвращает словарь card_id -> CardDef.
 
-# синие
-RANCH = "ranch"                    # ранчо
-FOREST = "forest"                  # лес
+    Формат JSON (пример):
+    {
+      "wheat_field": {
+        "name": "Пшеничное поле",
+        "color": "blue",
+        "card_type": "establishment",
+        "cost": 1,
+        "activation_numbers": [1],
+        "income": 1,
+        "image": "wheat_field.png",
+        "version": "normal"
+      }
+    }
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        raw = json.load(f)
 
-# зелёные
-CONVENIENCE_STORE = "convenience_store"  # магазинчик
+    cards: Dict[str, CardDef] = {}
 
-# красные
-CAFE = "cafe"
+    for card_id, data in raw.items():
+        # строковые значения → Enum’ы
+        try:
+            color = CardColor(data["color"])
+        except ValueError:
+            raise ValueError(f"Неизвестный color='{data['color']}' для карты {card_id}")
 
-# фиолетовые (упрощённая)
-STADIUM = "stadium"
+        try:
+            card_type = CardType(data["card_type"])
+        except ValueError:
+            raise ValueError(f"Неизвестный card_type='{data['card_type']}' для карты {card_id}")
 
-# Одна (из нескольких) достопримечательностей на MVP
-TRAIN_STATION = "train_station"
+        version_str = data.get("version", "normal")
+        try:
+            version = CardVersion(version_str)
+        except ValueError:
+            raise ValueError(f"Неизвестный version='{version_str}' для карты {card_id}")
+
+        activation_numbers = [int(x) for x in data.get("activation_numbers", [])]
+
+        card = CardDef(
+            id=card_id,
+            name=data["name"],
+            color=color,
+            card_type=card_type,
+            cost=int(data["cost"]),
+            activation_numbers=activation_numbers,
+            income=int(data["income"]),
+            image=data.get("image"),
+            version=version,
+        )
+        cards[card_id] = card
+
+    return cards
 
 
-CARDS: Dict[str, CardDef] = {
-    WHEAT_FIELD: CardDef(
-        id=WHEAT_FIELD,
-        name="Пшеничное поле",
-        color=CardColor.BLUE,
-        card_type=CardType.ESTABLISHMENT,
-        cost=1,
-        activation_numbers=[1],
-        income=1,
-    ),
-    BAKERY: CardDef(
-        id=BAKERY,
-        name="Пекарня",
-        color=CardColor.GREEN,
-        card_type=CardType.ESTABLISHMENT,
-        cost=1,
-        activation_numbers=[2, 3],
-        income=1,
-    ),
-    RANCH: CardDef(
-        id=RANCH,
-        name="Ранчо",
-        color=CardColor.BLUE,
-        card_type=CardType.ESTABLISHMENT,
-        cost=1,
-        activation_numbers=[2],
-        income=1,
-    ),
-    FOREST: CardDef(
-        id=FOREST,
-        name="Лес",
-        color=CardColor.BLUE,
-        card_type=CardType.ESTABLISHMENT,
-        cost=3,
-        activation_numbers=[5],
-        income=1,
-    ),
-    CONVENIENCE_STORE: CardDef(
-        id=CONVENIENCE_STORE,
-        name="Магазинчик",
-        color=CardColor.GREEN,
-        card_type=CardType.ESTABLISHMENT,
-        cost=2,
-        activation_numbers=[4],
-        income=3,
-    ),
-    CAFE: CardDef(
-        id=CAFE,
-        name="Кафе",
-        color=CardColor.RED,
-        card_type=CardType.ESTABLISHMENT,
-        cost=2,
-        activation_numbers=[3],
-        income=1,
-    ),
-    STADIUM: CardDef(
-        id=STADIUM,
-        name="Стадион",
-        color=CardColor.PURPLE,
-        card_type=CardType.ESTABLISHMENT,
-        cost=6,
-        activation_numbers=[6],
-        income=2,  # Упрощённый эффект, дальше доработаешь
-    ),
-    TRAIN_STATION: CardDef(
-        id=TRAIN_STATION,
-        name="Железнодорожный вокзал",
-        color=CardColor.PURPLE,
-        card_type=CardType.LANDMARK,
-        cost=4,
-        activation_numbers=[],
-        income=0,
-    ),
-}
+
+
+
+CARDS: Dict[str, CardDef] = _load_cards_from_json()
 
 
 def get_card_def(card_id: str) -> CardDef:
@@ -146,53 +127,132 @@ def get_card_def(card_id: str) -> CardDef:
 
 
 
-# CARDS = {
-#     "-1": {"name": "", "description": "", 
-#           "color_type": "", "effect_type": "", "card_type": "",
-#           "roll_num": [0], "cost": 0, "money": 0},
-#     "0": {"name": "Пшеничное поле", "description": "Доход из банка в ход любого игрока", 
-#           "color_type": "blue", "effect_type": "получить", "card_type": "растение",
-#           "roll_num": [1], "cost": 0, "money": 1},
-#     "1": {"name": "Пекарня", "description": "Доход из банка в свой ход", 
-#           "color_type": "green", "effect_type": "получить", "card_type": "магазин",
-#           "roll_num": [2, 3], "cost": 0, "money": 1}
+
+# # Карты
+# # Стартовые
+# WHEAT_FIELD = "wheat_field"        # пшеничное поле (синяя)
+# BAKERY = "bakery"                  # пекарня (зелёная)
+
+# # синие
+# RANCH = "ranch"                    # ранчо
+# FOREST = "forest"                  # лес
+# WHEAT_FIELD_BUY = "wheat_field_buy"
+# VINEYARD = "vineyard"
+# MINE = "mine"
+# FISHING_BOAT = "fishing_boat"
+
+# # зелёные
+# CONVENIENCE_STORE = "convenience_store"  # магазинчик
+# BAKERY_BUY = "bakery_buy" 
+
+# # красные
+# CAFE = "cafe"
+
+# # фиолетовые (упрощённая)
+# STADIUM = "stadium"
+
+# # Одна (из нескольких) достопримечательностей на MVP
+# TRAIN_STATION = "train_station"
+
+
+# CARDS: Dict[str, CardDef] = {
+#     WHEAT_FIELD: CardDef(
+#         id=WHEAT_FIELD,
+#         name="Пшеничное поле",
+#         color=CardColor.BLUE,
+#         card_type=CardType.ESTABLISHMENT,
+#         cost=1,
+#         activation_numbers=[1],
+#         income=1,
+#         image="0.png",
+#         version=CardVersion.NORMAL
+#     ),
+#     BAKERY: CardDef(
+#         id=BAKERY,
+#         name="Пекарня",
+#         color=CardColor.GREEN,
+#         card_type=CardType.ESTABLISHMENT,
+#         cost=1,
+#         activation_numbers=[2, 3],
+#         income=1,
+#         image="1.png",
+#         version=CardVersion.NORMAL
+#     ),
+#     FOREST: CardDef(
+#         id=FOREST,
+#         name="Заповедник",
+#         color=CardColor.BLUE,
+#         card_type=CardType.ESTABLISHMENT,
+#         cost=3,
+#         activation_numbers=[5],
+#         income=1,
+#         image="2.png",
+#         version=CardVersion.NORMAL
+#     ),
+#     CONVENIENCE_STORE: CardDef(
+#         id=CONVENIENCE_STORE,
+#         name="Цветник",
+#         color=CardColor.BLUE,
+#         card_type=CardType.ESTABLISHMENT,
+#         cost=2,
+#         activation_numbers=[4],
+#         income=1,
+#         image="3.png",
+#         version=CardVersion.PLUS
+#     ),
+#     VINEYARD: CardDef(
+#         id=VINEYARD,
+#         name="Виноградник",
+#         color=CardColor.BLUE,
+#         card_type=CardType.ESTABLISHMENT,
+#         cost=3,
+#         activation_numbers=[7],
+#         income=3,
+#         image="4.png",
+#         version=CardVersion.SHARP
+#     ),
+#     MINE: CardDef(
+#         id=MINE,
+#         name="Рудник",
+#         color=CardColor.BLUE,
+#         card_type=CardType.ESTABLISHMENT,
+#         cost=6,
+#         activation_numbers=[9],
+#         income=5,
+#         image="5.png",
+#         version=CardVersion.NORMAL
+#     ),
+#     FISHING_BOAT: CardDef(
+#         id=FISHING_BOAT,
+#         name="Рыбацкий баркас",
+#         color=CardColor.BLUE,
+#         card_type=CardType.ESTABLISHMENT,
+#         cost=2,
+#         activation_numbers=[8],
+#         income=3,
+#         image="6.png",
+#         version=CardVersion.PLUS
+#     ),
+#     RANCH: CardDef(
+#         id=RANCH,
+#         name="Ферма",
+#         color=CardColor.BLUE,
+#         card_type=CardType.ESTABLISHMENT,
+#         cost=1,
+#         activation_numbers=[2],
+#         income=1,
+#         image="7.png",
+#         version=CardVersion.NORMAL
+#     ),
+#     TRAIN_STATION: CardDef(
+#         id=TRAIN_STATION,
+#         name="Вокзал",
+#         color=CardColor.YELLOW,
+#         card_type=CardType.LANDMARK,
+#         cost=4,
+#         activation_numbers=[],
+#         income=0,
+#         image="8.png",
+#         version=CardVersion.NORMAL
+#     ),
 # }
-
-# def convert_card_cfg(cfg):
-#     return cfg["name"], cfg['description'], \
-#         cfg["color_type"], cfg["effect_type"], cfg["card_type"],\
-#         cfg['roll_num'], cfg['cost'], cfg['money']
-
-# class Card:
-#     def __init__(self, 
-#                  name: str = "",
-#                  description: str = "",
-#                  color_type: str = "" ,
-#                  effect_type: str = "",
-#                  card_type: str = "",
-#                  roll_num: List[int] = [],
-#                  cost: int = 0,
-#                  money: int = 0,
-#                  img_id: str = ""):
-#         """
-#         name: Имя карты для вывода
-#         description: Описание
-#         color_type: Цвет карты определяет действия
-#         effect_type: Тип эффекта
-#         roll_num: Сколько Кубик должен кинуть
-#         cost: Сколько карта стоит
-#         money: Сколько карта дает
-#         img_id: Заранее какой айди у изображения, чтобы отображать
-#         """
-
-#         self.name = name
-#         self.description = description
-
-#         self.color_type = color_type  
-#         self.effect_type = effect_type  
-#         self.card_type = card_type
-
-#         self.roll_num = roll_num  
-#         self.cost = cost  
-#         self.money = money 
-#         self.img_id = img_id  
