@@ -93,6 +93,12 @@ def legal_actions(state: GameState, player_index: int) -> List[Action]:
             station_def = get_card_def("train_station")
             if player.coins >= station_def.cost:
                 actions.append(Action(type=ActionType.BUILD_LANDMARK, card_id="train_station"))
+        
+        if not player.has_built("shopping_mall"):
+            station_def = get_card_def("shopping_mall")
+            if player.coins >= station_def.cost:
+                actions.append(Action(type=ActionType.BUILD_LANDMARK, card_id="shopping_mall"))
+
 
         actions.append(Action(type=ActionType.END_BUY))
 
@@ -283,6 +289,7 @@ def _create_starting_player() -> PlayerState:
     p.add_card("bakery", 1)
 
     p.landmarks["train_station"] = False
+    p.landmarks["shopping_mall"] = False
     return p
 
 

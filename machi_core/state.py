@@ -101,7 +101,7 @@ class GameState:
         """
 
         for idx, p in enumerate(self.players):
-            if p.has_built("train_station"):
+            if p.has_built("train_station") and p.has_built("shopping_mall"):
                 return idx
             
         return None
