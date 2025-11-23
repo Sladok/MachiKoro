@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, List
 from random import randint
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QPushButton, QMessageBox, QSizePolicy
+from PySide6.QtWidgets import QPushButton, QMessageBox, QSizePolicy, QInputDialog
 
 from machi_core.actions import Action, ActionType
 from machi_core.cards import get_card_def
@@ -16,8 +16,9 @@ if TYPE_CHECKING:
     from ui.main_window import MainWindow
 
 
-def _roll_dice() -> int:
-    return randint(1, 6)
+def _roll_dice(num_dice: int = 1) -> list[int]:
+    """Бросить num_dice кубиков, вернуть список значений."""
+    return [randint(1, 6) for _ in range(num_dice)]
 
 
 class ActionsMixin:
@@ -44,32 +45,89 @@ class ActionsMixin:
         if not actions:
             return
 
-        filtered_actions: List[Action] = [
-            a for a in actions if a.type != ActionType.BUY_CARD
-        ]
+        # нас интересует только кнопка "Завершить ход"
+        end_actions = [a for a in actions if a.type == ActionType.END_BUY]
+        if not end_actions:
+            return
 
-        def sort_key(a: Action) -> int:
-            if a.type == ActionType.ROLL:
-                return 0
-            if a.type == ActionType.BUILD_LANDMARK:
-                return 1
-            if a.type == ActionType.END_BUY:
-                return 2
-            return 10
+        end_action = end_actions[0]
 
-        filtered_actions.sort(key=sort_key)
+        text = self._format_action_text(end_action)
+        btn = QPushButton(text)
+        btn.setCursor(Qt.PointingHandCursor)
 
-        for action in filtered_actions:
-            btn = QPushButton(self._format_action_text(action))
-            btn.setMinimumHeight(36)
-            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.clicked.connect(
-                lambda checked=False, a=action: self._on_action_clicked(a)
+        # большая красная кнопка
+        btn.setMinimumHeight(48)
+        btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        btn.setStyleSheet("""
+            QPushButton {
+                background-color: #c62828;
+                color: white;
+                font-weight: bold;
+                font-size: 13pt;
+                border-radius: 8px;
+                padding: 8px 24px;
+            }
+            QPushButton:hover {
+                background-color: #e53935;
+            }
+            QPushButton:pressed {
+                background-color: #b71c1c;
+            }
+        """)
+
+        # Qt сам подберёт ширину по тексту + padding
+        btn.clicked.connect(
+            lambda checked=False, a=end_action: self._on_action_clicked(a)
+        )
+
+        self.actions_layout.addWidget(btn)
+
+
+
+    def _on_dice_label_clicked(self: "MainWindow") -> None:
+        """Клик по картинке кубика в заголовке рынка."""
+        # игра закончена или ходит бот — игнорируем
+        if self.game.done:
+            return
+        if self._current_agent() is not None:
+            return
+        if self.game.phase != Phase.ROLL:
+            return
+
+        idx = self.game.current_player
+        actions: List[Action] = legal_actions(self.game, idx)
+
+        roll_actions = [a for a in actions if a.type == ActionType.ROLL]
+        if not roll_actions:
+            return
+
+        roll_action = roll_actions[0]
+
+        # смотрим, построен ли вокзал у текущего игрока
+        player = self.game.current_player_state()
+        has_station = player.has_built("train_station")
+
+        num_dice = 1
+        if has_station:
+            # выбор 1 или 2 кубика
+            options = ["Бросить 1 кубик", "Бросить 2 кубика"]
+            text, ok = QInputDialog.getItem(
+                self,
+                "Бросок кубиков",
+                "Сколько кубиков бросить?",
+                options,
+                0,
+                False,
             )
-            self.actions_layout.addWidget(btn)
+            if not ok:
+                return
+            num_dice = 2 if "2 кубика" in text else 1
 
-        self.actions_layout.addStretch(1)
+        # записываем выбор в Action и исполняем
+        roll_action.num_dice = num_dice
+        self._on_action_clicked(roll_action)
+
 
     def _format_action_text(self: "MainWindow", action: Action) -> str:
         if action.type == ActionType.ROLL:
@@ -105,6 +163,57 @@ class ActionsMixin:
         card_def = get_card_def(card_id)
         self._append_log(f"Карту {card_def.name} сейчас нельзя купить")
 
+    def _on_player_landmark_clicked(self: "MainWindow", player_idx: int, item) -> None:
+        """Клик по достопримечательности в полосе игрока."""
+        from machi_core.actions import ActionType as AT
+
+        if self.game.done:
+            return
+        if self._current_agent() is not None:
+            return  # сейчас ход бота
+
+        # клики другого игрока игнорируем — строить можно только у текущего
+        if player_idx != self.game.current_player:
+            return
+
+        # достопримечательности строятся только в фазе BUY
+        if self.game.phase != Phase.BUY:
+            return
+
+        data = item.data(Qt.UserRole)
+        if not isinstance(data, dict):
+            return
+        if data.get("kind") != "landmark":
+            return
+
+        landmark_id = data.get("id")
+        built = bool(data.get("built"))
+
+        if not landmark_id or built:
+            # нет id или уже построена — делать нечего
+            return
+
+        player = self.game.players[player_idx]
+        card_def = get_card_def(landmark_id)
+
+        # проверяем, хватает ли монет
+        if player.coins < card_def.cost:
+            name = getattr(player, "name", f"Игрок {player_idx + 1}")
+            self._append_log(
+                f"{name} не может построить {card_def.name}: не хватает монет"
+            )
+            return
+
+        # ищем легальное действие BUILD_LANDMARK именно для этой карты
+        actions: List[Action] = legal_actions(self.game, player_idx)
+        for act in actions:
+            if act.type == AT.BUILD_LANDMARK and act.card_id == landmark_id:
+                self._on_action_clicked(act)
+                return
+
+        # если сюда дошли — значит ядро не считает строительство этой карты допустимым
+        self._append_log(f"Достопримечательность {card_def.name} сейчас нельзя построить")
+
     def _on_action_clicked(self: "MainWindow", action: Action) -> None:
         if self.game.done:
             return
@@ -115,10 +224,26 @@ class ActionsMixin:
 
         try:
             if action.type == ActionType.ROLL:
-                dice = _roll_dice()
-                self._start_dice_animation(dice)
-                self.game = apply_action(self.game, action, dice_value=dice)
-                self._append_log(f"{name} бросает кубик: выпало {dice}")
+                num_dice = getattr(action, "num_dice", 1)
+                dice_values = _roll_dice(num_dice)
+                total = sum(dice_values)
+
+                # сохраним реальные значения — их отрисует DiceMixin
+                self._last_dice_values = dice_values
+
+                # анимация — крутим последний кубик
+                self._start_dice_animation(dice_values[-1])
+
+                # ядру передаём только сумму
+                self.game = apply_action(self.game, action, dice_value=total)
+
+                if num_dice == 1:
+                    self._append_log(f"{name} бросает кубик: выпало {total}")
+                else:
+                    s = " + ".join(str(v) for v in dice_values)
+                    self._append_log(
+                        f"{name} бросает {num_dice} кубика: {s} = {total}"
+                    )
             else:
                 self.game = apply_action(self.game, action)
                 self._append_log(self._describe_non_roll_action(name, action))

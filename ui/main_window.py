@@ -33,6 +33,21 @@ from machi_core.agents import Agent
 
 from ui.widgets.player_board import PlayerBoard
 
+class ClickableLabel(QLabel):
+    """QLabel, по которому можно кликать как по кнопке."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._click_callback = None
+
+    def set_click_callback(self, callback):
+        self._click_callback = callback
+
+    def mousePressEvent(self, event):
+        # ЛКМ -> вызываем callback
+        if event.button() == Qt.LeftButton and self._click_callback is not None:
+            self._click_callback()
+        return super().mousePressEvent(event)
+
 
 class MainWindow(
     QMainWindow,
@@ -61,18 +76,30 @@ class MainWindow(
 
         # полосы карт у каждого игрока
         self.player_card_lists: list[QListWidget] = []
-        for _ in self.game.players:
+        for idx, _ in enumerate(self.game.players):
             lst = QListWidget()
             lst.setViewMode(QListView.IconMode)
+
+            # хотим ОДНУ строку, а не столбец
             lst.setFlow(QListView.LeftToRight)
-            lst.setWrapping(True)
+            lst.setWrapping(False)
+
             lst.setIconSize(QSize(PLAYER_CARD_W, PLAYER_CARD_H))
             lst.setResizeMode(QListView.Adjust)
             lst.setSpacing(4)
-            lst.setFixedHeight(PLAYER_CARD_H * 2 + 60)
-            lst.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+            lst.setFixedHeight(PLAYER_CARD_H + 30)
+            lst.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+            lst.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             lst.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             lst.setSelectionMode(QAbstractItemView.NoSelection)
+
+            # <<< НОВОЕ: клик по элементу в полосе игрока
+            lst.itemClicked.connect(
+                lambda item, pidx=idx: self._on_player_landmark_clicked(pidx, item)
+            )
+
             self.player_card_lists.append(lst)
 
         # агенты (боты/люди)
@@ -81,13 +108,25 @@ class MainWindow(
 
         # --- Центр. виджет и корневой layout (стол) ---------------------------
         central = QWidget(self)
+        central.setObjectName("tableRoot")
         self.setCentralWidget(central)
-        central.setStyleSheet("background-color: #0d1117;")  # тёмный стол
 
+        central.setStyleSheet("""
+            QWidget#tableRoot {
+                background: qradialgradient(
+                    cx: 0.5, cy: 0.35, radius: 1.0,
+                    fx: 0.5, fy: 0.35,
+                    stop: 0   #243447,   /* центр посветлее */
+                    stop: 0.6 #141a23,
+                    stop: 1   #05070b    /* по краям темнее */
+                );
+            }
+        """)
 
         root_layout = QVBoxLayout()
         root_layout.setSpacing(8)
-        root_layout.setContentsMargins(8, 32, 8, 16)
+        root_layout.setContentsMargins(8, 32, 8, 120)
+
         central.setLayout(root_layout)
 
         # === верхние игроки ===================================================
@@ -105,25 +144,25 @@ class MainWindow(
         self.left_players_widget = QWidget()
         self.left_players_layout = QVBoxLayout(self.left_players_widget)
         self.left_players_layout.setSpacing(16)
-        self.left_players_widget.setFixedWidth(220)
-        middle_layout.addWidget(self.left_players_widget)
+        # self.left_players_widget.setFixedWidth(320)
+        middle_layout.addWidget(self.left_players_widget, 1)
 
         # ЦЕНТРАЛЬНЫЙ "СТОЛ"
         self.table_layout = QVBoxLayout()
         self.table_layout.setSpacing(8)
-        middle_layout.addLayout(self.table_layout, 1)
+        middle_layout.addLayout(self.table_layout, 2)
 
         # ПРАВАЯ КОЛОНКА ИГРОКОВ (узкая)
         self.right_players_widget = QWidget()
         self.right_players_layout = QVBoxLayout(self.right_players_widget)
         self.right_players_layout.setSpacing(16)
-        self.right_players_widget.setFixedWidth(220)
-        middle_layout.addWidget(self.right_players_widget)
+        # self.right_players_widget.setFixedWidth(320)
+        middle_layout.addWidget(self.right_players_widget, 1)
 
         # === нижние игроки ====================================================
         self.bottom_players_layout = QHBoxLayout()
         self.bottom_players_layout.setSpacing(40)
-        self.bottom_players_layout.setContentsMargins(0, 8, 0, 16)
+        self.bottom_players_layout.setContentsMargins(0, 8, 0, 32)
         root_layout.addLayout(self.bottom_players_layout)
 
         # =====================================================================
@@ -134,17 +173,54 @@ class MainWindow(
         header_row = QHBoxLayout()
         header_row.setSpacing(8)
         self.table_layout.addLayout(header_row)
+        
+        header_row.addStretch(1)
 
         self.market_title = QLabel("Рынок")
         self.market_title.setStyleSheet("font-weight: bold;")
         header_row.addWidget(self.market_title, 0, alignment=Qt.AlignLeft)
 
         header_row.addStretch(1)
+        
 
-        self.dice_label = QLabel()
+        # --- Крупный кубик над маркетом -------------------------------------
+        dice_row = QHBoxLayout()
+        dice_row.setSpacing(8)
+        self.table_layout.addLayout(dice_row)
+
+        dice_row.addStretch(1)
+
+        self.dice_label = ClickableLabel()
         self.dice_label.setAlignment(Qt.AlignCenter)
-        self.dice_label.setFixedSize(80, 80)
-        header_row.addWidget(self.dice_label, 0, alignment=Qt.AlignRight)
+        self.dice_label.setFixedSize(100, 100)
+        self.dice_label.set_click_callback(self._on_dice_label_clicked)
+
+        # ► делает его визуально кнопкой
+        self.dice_label.setCursor(Qt.PointingHandCursor)
+        self.dice_label.setToolTip("Нажми, чтобы бросить кубик")
+        self.dice_label.setStyleSheet("""
+            QLabel {
+                border: 2px solid #f5c518;
+                border-radius: 10px;
+                background-color: #161b22;
+                padding: 6px;
+            }
+            QLabel:hover {
+                border: 2px solid #ffd54f;
+                background-color: #1f2630;
+            }
+        """)
+
+        dice_row.addWidget(self.dice_label, 0, alignment=Qt.AlignCenter)
+
+        dice_row.addStretch(1)
+        
+        # ► сразу показать какую-то грань
+        if self.game.last_roll is not None:
+            self._set_dice_face(self.game.last_roll)
+        else:
+            self._set_dice_face(1)   # например, «1»
+
 
         header_div = QFrame()
         header_div.setFrameShape(QFrame.HLine)
@@ -176,26 +252,21 @@ class MainWindow(
         actions_row.setSpacing(8)
         self.table_layout.addLayout(actions_row)
 
-        actions_row.addStretch(1)
-
-        self.actions_container = QWidget()
-        self.actions_layout = QHBoxLayout(self.actions_container)
+        # Внутренний layout для кнопок действий (без лишних виджетов)
+        self.actions_layout = QHBoxLayout()
         self.actions_layout.setContentsMargins(0, 0, 0, 0)
         self.actions_layout.setSpacing(8)
 
-        self.actions_scroll = QScrollArea()
-        self.actions_scroll.setWidgetResizable(True)
-        self.actions_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.actions_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.actions_scroll.setFrameShape(QFrame.NoFrame)
-        self.actions_scroll.setWidget(self.actions_container)
-
-        actions_row.addWidget(self.actions_scroll, 0)
+        # Центруем actions_layout между двумя растяжками
         actions_row.addStretch(1)
+        actions_row.addLayout(self.actions_layout)
+        actions_row.addStretch(1)
+
 
         # --- Таймер для анимации кубика --------------------------------------
         self._dice_timer = None
         self._dice_sequence: list[int] = []
+        self._last_dice_values: list[int] | None = None
 
         # Первый рендер
         self._refresh_full_ui()
@@ -220,4 +291,8 @@ class MainWindow(
         self._update_market()
         self._rebuild_actions()
         if self.game.last_roll is not None:
-            self._set_dice_face(self.game.last_roll)
+            # если знаем реальные кубики — показываем их
+            if getattr(self, "_last_dice_values", None):
+                self._set_dice_face(self._last_dice_values)
+            else:
+                self._set_dice_face(self.game.last_roll)

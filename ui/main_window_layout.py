@@ -104,14 +104,19 @@ def rebuild_player_areas(window: "MainWindow") -> None:
         cards = window.player_card_lists[idx]
 
         v.addWidget(board, 0, Qt.AlignCenter)
-        v.addWidget(cards, 0, Qt.AlignCenter)
+        v.addWidget(cards)
 
-        if side in ("top", "bottom"):
-            # сверху/снизу зона игрока занимает доступную ширину
+        # v.addWidget(cards, 0, Qt.AlignCenter)
+
+        # if side in ("top", "bottom"):
+        #     # сверху/снизу зона игрока занимает доступную ширину
+        #     w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        # else:
+        #     # слева/справа — компактнее
+        #     w.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+
+        if side in ("top", "bottom", "left", "right"):
             w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        else:
-            # слева/справа — компактнее
-            w.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
         return w
 
@@ -206,17 +211,49 @@ def update_all_player_cards(window: "MainWindow") -> None:
             lst.addItem(item)
 
         # достопримечательности
-        built_landmarks = [lid for lid, built in player.landmarks.items() if built]
-        for lid in built_landmarks:
+        # built_landmarks = [lid for lid, built in player.landmarks.items() if built]
+        # for lid in built_landmarks:
+        #     ldef = get_card_def(lid)
+        #     item = QListWidgetItem("🏛")
+        #     if ldef.image:
+        #         img_path = os.path.join(CARDS_IMG_DIR, ldef.image)
+        #         if os.path.exists(img_path):
+        #             pixmap = QPixmap(img_path)
+        #             item.setIcon(QIcon(pixmap))
+        #     item.setToolTip(f"{ldef.name} (построено)")
+        #     lst.addItem(item)
+
+        # достопримечательности — показываем ВСЕ, серые пока не куплены
+        for lid, built in player.landmarks.items():
             ldef = get_card_def(lid)
+
+            # базовый текст в ячейке
             item = QListWidgetItem("🏛")
+
+            # иконка достопримечательности
             if ldef.image:
                 img_path = os.path.join(CARDS_IMG_DIR, ldef.image)
                 if os.path.exists(img_path):
                     pixmap = QPixmap(img_path)
-                    item.setIcon(QIcon(pixmap))
-            item.setToolTip(f"{ldef.name} (построено)")
+                    icon = QIcon(pixmap)
+                    item.setIcon(icon)
+
+            status = "построено" if built else "не построено"
+            item.setToolTip(f"{ldef.name} ({status})")
+
+            item.setData(
+                Qt.UserRole,
+                {"kind": "landmark", "id": lid, "built": built},
+            )
+
+            if not built:
+                # делаем её «серой» (disabled)
+                flags = item.flags()
+                flags &= ~Qt.ItemIsEnabled
+                item.setFlags(flags)
+
             lst.addItem(item)
+
 
 
 def update_market(window: "MainWindow") -> None:
@@ -296,13 +333,12 @@ def update_market(window: "MainWindow") -> None:
 
         layout.addWidget(btn, row, col, Qt.AlignCenter)
 
-    # === динамическая высота под фактическое число рядов ============
-    rows = (len(cards) + cards_per_row - 1) // cards_per_row
-    if rows == 0:
-        rows = 1
+    # === постоянная высота под максимум 2 ряда карт ==================
+    max_rows = 2  # у нас максимум два ряда на рынке
 
     v_spacing = layout.verticalSpacing()
     row_height = MARKET_CARD_H + 30  # чуть больше высоты карты с подписью
-    total_height = rows * row_height + (rows - 1) * v_spacing
+    total_height = max_rows * row_height + (max_rows - 1) * v_spacing
 
     window.market_container.setFixedHeight(total_height)
+

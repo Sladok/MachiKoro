@@ -39,7 +39,7 @@ class RandomBot(Agent):
         # 1) ROLL (один вариант)
         roll = [a for a in actions if a.type == ActionType.ROLL]
         if roll:
-            return roll[0]
+            return self._rng.choice(roll)
 
         # 2) В фазе BUY — BUILD > BUY > END_BUY
         build = [a for a in actions if a.type == ActionType.BUILD_LANDMARK]

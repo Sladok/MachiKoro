@@ -10,7 +10,7 @@ CARDS_IMG_DIR = os.path.join(BASE_DIR, "assets", "images", "cards")
 DICE_IMG_DIR = os.path.join(BASE_DIR, "assets", "images", "dice")
 
 # Размеры карт у игроков
-PLAYER_CARD_W, PLAYER_CARD_H = 120, 190
+PLAYER_CARD_W, PLAYER_CARD_H = 130, 190
 
 # Размеры карт на рынке
-MARKET_CARD_W, MARKET_CARD_H = 110, 170
+MARKET_CARD_W, MARKET_CARD_H = 130, 190

@@ -74,7 +74,12 @@ def legal_actions(state: GameState, player_index: int) -> List[Action]:
     actions: List[Action] = []
 
     if state.phase == Phase.ROLL:
-        actions.append(Action(type=ActionType.ROLL))
+        player = state.current_player_state()
+
+        actions.append(Action(type=ActionType.ROLL, num_dice=1))
+
+        if player.has_built("train_station"):
+            actions.append(Action(type=ActionType.ROLL, num_dice=2))
 
     elif state.phase == Phase.BUY:
         for card_id, count in state.market.available.items():
@@ -285,8 +290,8 @@ def _create_starting_player() -> PlayerState:
     p = PlayerState()
     p.coins = 3
 
-    p.add_card("wheat_field", 1)
-    p.add_card("bakery", 1)
+    p.add_card("wheat_field_buy", 1)
+    p.add_card("bakery_buy", 1)
 
     p.landmarks["train_station"] = False
     p.landmarks["shopping_mall"] = False

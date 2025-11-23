@@ -30,3 +30,4 @@ class Action:
     """
     type: ActionType
     card_id: Optional[str] = None  # для BUY_CARD / BUILD_LANDMARK
+    num_dice: int = 1              # НОВОЕ: сколько кубиков бросаем (для ROLL)
