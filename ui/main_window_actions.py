@@ -90,8 +90,10 @@ class ActionsMixin:
         # игра закончена или ходит бот — игнорируем
         if self.game.done:
             return
+        
         if self._current_agent() is not None:
             return
+        
         if self.game.phase != Phase.ROLL:
             return
 
@@ -138,6 +140,27 @@ class ActionsMixin:
             card_def = get_card_def(action.card_id)
             return f"Построить: {card_def.name} (стоимость {card_def.cost})"
         return action.type.value
+
+    def _handle_game_over(self: "MainWindow") -> None:
+        """Показать, что партия закончена, и предложить рестарт."""
+        winner_idx = self.game.winner
+        if winner_idx is not None and 0 <= winner_idx < len(self.game.players):
+            player = self.game.players[winner_idx]
+            name = getattr(player, "name", f"Игрок {winner_idx + 1}")
+            text = f"Игра окончена.\nПобедитель: {name}"
+        else:
+            text = "Игра окончена."
+
+        res = QMessageBox.question(
+            self,
+            "Конец игры",
+            text + "\n\nНачать новую партию?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
+        )
+        if res == QMessageBox.Yes:
+            self._reset_game()
+
 
     # ===== клики по рынку и действиям =======================================
 
@@ -266,6 +289,9 @@ class ActionsMixin:
         self._refresh_full_ui()
         self._maybe_schedule_bot()
         self._append_coins_summary()
+
+        if self.game.done:
+            self._handle_game_over()
 
     def _describe_non_roll_action(
         self: "MainWindow", player_name: str, action: Action

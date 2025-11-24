@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional
-
+from random import choice
 
 class Phase(str, Enum):
     """
@@ -48,7 +48,30 @@ class PlayerState:
 
     def build_landmark(self, landmark_id: str) -> int:
         self.landmarks[landmark_id] = True
+    
+    def rebuild_landmark(self, landmark_id: str) -> int:
+        self.landmarks[landmark_id] = False
 
+    def count_build_landmark(self) -> int:
+        count = 0
+        for lnd in self.landmarks.values():
+            if lnd:
+                count += 1
+        return count
+    
+    def count_build_establishments(self, card_id: str) -> int:
+        count = 0
+        for lnd, cnt in self.establishments.items():
+            if lnd == card_id:
+                count += cnt
+        return count
+    
+    def random_true_landmark(self):
+        true_landmark = list(filter(lambda x: x[1], self.landmarks.items()))
+        if true_landmark:
+            return choice(true_landmark)
+        else:
+            None
 
 @dataclass
 class MarketState:
@@ -101,7 +124,7 @@ class GameState:
         """
 
         for idx, p in enumerate(self.players):
-            if p.has_built("train_station") and p.has_built("shopping_mall"):
+            if p.has_built("train_station") and p.has_built("shopping_mall") and p.has_built("port"):
                 return idx
             
         return None

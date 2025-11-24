@@ -23,7 +23,7 @@ from .cards import (
 
 from .state import GameState, PlayerState, MarketState, Phase
 from .actions import Action, ActionType
-from random import Random
+from random import Random, randint
 
 # сколько копий каждой версии в колоде (упростим пока)
 COPIES_PER_VERSION = {
@@ -100,9 +100,14 @@ def legal_actions(state: GameState, player_index: int) -> List[Action]:
                 actions.append(Action(type=ActionType.BUILD_LANDMARK, card_id="train_station"))
         
         if not player.has_built("shopping_mall"):
-            station_def = get_card_def("shopping_mall")
-            if player.coins >= station_def.cost:
+            shopping_def = get_card_def("shopping_mall")
+            if player.coins >= shopping_def.cost:
                 actions.append(Action(type=ActionType.BUILD_LANDMARK, card_id="shopping_mall"))
+
+        if not player.has_built("port"):
+            port_def = get_card_def("port")
+            if player.coins >= port_def.cost:
+                actions.append(Action(type=ActionType.BUILD_LANDMARK, card_id="port"))
 
 
         actions.append(Action(type=ActionType.END_BUY))
@@ -148,6 +153,8 @@ def _apply_buy_card(state: GameState, card_id: Optional[str]) -> None:
 
     if card_def.card_type == CardType.ESTABLISHMENT:
         player.add_card(card_id)
+        if card_id == "credit_bureau":
+            player.coins += 5
         
         # если после покупки у этого типа стало 0 – убираем его из available
         if state.market.available.get(card_id, 0) <= 0:
@@ -227,7 +234,6 @@ def apply_action(state: GameState, action: Action, dice_value: Optional[int] = N
 
     return state
 
-
 def _resolve_dice(state: GameState) -> None:
     """
     Распределяет доход по итогам броска
@@ -236,13 +242,20 @@ def _resolve_dice(state: GameState) -> None:
     if dice is None:
         return
 
-    current = state.current_player_state()  # активный игрок
+    current_idx = state.current_player          # индекс активного
+    current = state.current_player_state()      # активный игрок
 
-    # 1) Красные
-    for player in state.players:
-        if current == player:
-            continue
-        
+    num_players = len(state.players)
+
+    # 1) Красные (рестораны других игроков)
+    # начинаем с игрока слева от current и идём по кругу
+    for step in range(1, num_players):
+        if current.coins <= 0:
+            break  # деньги у активного закончились – дальше красные не работают
+
+        p_idx = (current_idx + step) % num_players
+        player = state.players[p_idx]          # тот, кто может получать деньги
+
         for card_id, count in player.establishments.items():
             if count <= 0:
                 continue
@@ -250,15 +263,72 @@ def _resolve_dice(state: GameState) -> None:
             card_def = get_card_def(card_id)
 
             if card_def.color == CardColor.RED and dice in card_def.activation_numbers:
-                cost = card_def.income * count
                 
-                transfer = min(cost, current.coins)
+                if current.coins <= 0:
+                    break  # уже нечего брать
 
-                current.coins -= transfer
-                player.coins += transfer
+                if card_def.version == "normal":
+                    cost = card_def.income * count
+                    
+                    transfer = min(cost, current.coins)
 
-    
-    # 2) Зеленые
+                    current.coins -= transfer
+                    player.coins += transfer
+                
+                elif card_def.version == "plus":
+                    if card_id == "sushi_bar":
+                        if player.has_built("port"):
+                            
+                            cost = card_def.income * count
+                            
+                            transfer = min(cost, current.coins)
+
+                            current.coins -= transfer
+                            player.coins += transfer
+                    else:
+                        
+                        cost = card_def.income * count
+                        
+                        transfer = min(cost, current.coins)
+
+                        current.coins -= transfer
+                        player.coins += transfer
+
+                elif card_def.version == "sharp":
+                    if card_id == "restaurant":
+                        count_landmark = current.count_build_landmark()
+
+                        if count_landmark >= 2:
+                            
+                            cost = card_def.income * count
+                            
+                            transfer = min(cost, current.coins)
+
+                            current.coins -= transfer
+                            player.coins += transfer
+
+                    elif card_id == "elite_bar":
+                        count_landmark = current.count_build_landmark()
+
+                        if count_landmark >= 3:
+                            
+                            cost = card_def.income * count
+                            
+                            transfer = min(cost, current.coins)
+
+                            current.coins -= transfer
+                            player.coins += transfer
+
+
+                    else:
+                        cost = card_def.income * count
+                        
+                        transfer = min(cost, current.coins)
+
+                        current.coins -= transfer
+                        player.coins += transfer
+
+    # 2) Зеленые – как у тебя было
     for card_id, count in current.establishments.items():
         if count <= 0:
             continue
@@ -266,9 +336,71 @@ def _resolve_dice(state: GameState) -> None:
         card_def = get_card_def(card_id)
 
         if card_def.color == CardColor.GREEN and dice in card_def.activation_numbers:
-            current.coins += card_def.income * count
+            if card_id == "department_store":
+                count_landmark = current.count_build_landmark()
 
-    # 3) Синие
+                if count_landmark <= 1:
+                    current.coins += card_def.income * count
+            
+            elif card_id == "building_demolition_company":
+                
+                for _ in range(count):
+                    lndmrk = current.random_true_landmark()
+                    
+                    print(lndmrk)
+                    if lndmrk is None:
+                        continue
+
+                    print("yes")
+
+                    current.rebuild_landmark(lndmrk[0])
+                    current.coins += card_def.income
+
+            elif card_id == "flower_shop":
+                result_count = 0
+                for _ in range(count):
+                    count_convenience_store = current.count_build_establishments("convenience_store")
+                    result_count += count_convenience_store
+                current.coins += result_count
+
+            elif card_id == "winery":
+                result_count = 0
+                for _ in range(count):
+                    count_vineyard = current.count_build_establishments("vineyard")
+                    result_count += count_vineyard
+                current.coins += result_count * card_def.income
+
+                # Нужно сделать закрытие на ремонт
+
+            elif card_id == "cheese_factory":
+                result_count = 0
+                for _ in range(count):
+                    count_ranch = current.count_build_establishments("ranch")
+                    result_count += count_ranch
+                current.coins += result_count * card_def.income
+
+                # Нужно сделать закрытие на ремонт
+
+            elif card_id == "furniture_factory":
+                result_count = 0
+                for _ in range(count):
+                    count_mine = current.count_build_establishments("mine")
+                    result_count += count_mine
+
+                    count_forest = current.count_build_establishments("forest")
+                    result_count += count_forest
+
+                current.coins += result_count * card_def.income
+
+                # Нужно сделать закрытие на ремонт
+
+            else:
+                cost = card_def.income * count
+                
+                current.coins += cost
+
+
+    # 3) Синие – как у тебя было
     for player in state.players:
         for card_id, count in player.establishments.items():
             if count <= 0:
@@ -277,9 +409,27 @@ def _resolve_dice(state: GameState) -> None:
             card_def = get_card_def(card_id)
 
             if card_def.color == CardColor.BLUE and dice in card_def.activation_numbers:
-                player.coins += card_def.income * count
+                
+                if card_id == "cornfield":
+                    count_landmark = player.count_build_landmark()
 
-    # 4) Фиолетовые
+                    if count_landmark <= 1:
+                        player.coins += card_def.income * count
+
+                elif card_id == "fishing_boat":
+                    if player.has_built("port"):
+                        player.coins += card_def.income * count
+                        
+                elif card_id == "trawler":
+                    if player.has_built("port"):
+                        count1 = randint(1, 6)
+                        count2 = randint(1, 6)
+                        player.coins += (count1 + count2) * count
+
+                else:
+                    player.coins += card_def.income * count
+
+    # 4) Фиолетовые – позже
     # TODO: они тяжелее потом добавлю
 
 
@@ -293,6 +443,7 @@ def _create_starting_player() -> PlayerState:
     p.add_card("wheat_field_buy", 1)
     p.add_card("bakery_buy", 1)
 
+    p.landmarks["port"] = False
     p.landmarks["train_station"] = False
     p.landmarks["shopping_mall"] = False
     return p

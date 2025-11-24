@@ -10,6 +10,7 @@ from machi_core.rules import legal_actions
 if TYPE_CHECKING:
     from ui.main_window import MainWindow
 
+BOT_WAIT = 100
 
 class BotsMixin:
     def _current_agent(self: "MainWindow") -> Agent | None:
@@ -24,7 +25,7 @@ class BotsMixin:
         agent = self._current_agent()
         if agent is None:
             return
-        QTimer.singleShot(1500, self._bot_step)  # чуть подождать, чтобы было видно
+        QTimer.singleShot(BOT_WAIT, self._bot_step)  # чуть подождать, чтобы было видно
 
     def _bot_step(self: "MainWindow") -> None:
         if self.game.done:

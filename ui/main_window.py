@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 
 from machi_core.rules import new_game
 from machi_core.agents import Agent
+from machi_core.cards import CardVersion  
 
 from ui.widgets.player_board import PlayerBoard
 
@@ -66,7 +67,7 @@ class MainWindow(
         # --- Состояние игры ---------------------------------------------------
         self.num_players = num_players
         self._ask_num_players()
-        self.game = new_game(self.num_players)
+        self.game = new_game(self.num_players, {CardVersion.NORMAL, CardVersion.PLUS, CardVersion.SHARP})
         self._ask_player_names()
 
         # планшеты игроков вокруг стола
@@ -272,6 +273,38 @@ class MainWindow(
         self._refresh_full_ui()
         self._maybe_schedule_bot()
 
+    def _reset_game(self) -> None:
+        """
+        Полный рестарт партии:
+          - новое состояние игры;
+          - заново спрашиваем имена;
+          - заново выбираем, кто бот/человек.
+        Количество игроков берём из self.num_players.
+        """
+        # остановить анимацию кубика
+        if self._dice_timer is not None:
+            self._dice_timer.stop()
+        self._dice_sequence = []
+        self._last_dice_values = None
+
+        # пересоздать ядро
+        self.game = new_game(
+            self.num_players,
+            {CardVersion.NORMAL, CardVersion.PLUS, CardVersion.SHARP},
+        )
+
+        # заново спросить имена
+        self._ask_player_names()
+
+        # заново настроить агентов
+        self.agents = [None] * self.num_players
+        self._setup_agents()
+
+        # сбросить кубик и перерисовать
+        self._set_dice_face(1)
+        self._refresh_full_ui()
+        self._maybe_schedule_bot()
+
     # ===== обёртки для layout_helpers ========================================
     def _rebuild_player_areas(self) -> None:
         layout_helpers.rebuild_player_areas(self)
@@ -290,6 +323,22 @@ class MainWindow(
         self._rebuild_player_areas()
         self._update_market()
         self._rebuild_actions()
+
+        # --- заголовок над рынком: статус партии ---
+        if self.game.done and self.game.winner is not None:
+            winner_idx = self.game.winner
+            if 0 <= winner_idx < len(self.game.players):
+                p = self.game.players[winner_idx]
+                name = getattr(p, "name", f"Игрок {winner_idx + 1}")
+                self.market_title.setText(f"Победитель: {name}")
+            else:
+                self.market_title.setText("Игра окончена")
+        elif self.game.done:
+            self.market_title.setText("Игра окончена")
+        else:
+            self.market_title.setText("Рынок")
+        
+        # --- кубики ---
         if self.game.last_roll is not None:
             # если знаем реальные кубики — показываем их
             if getattr(self, "_last_dice_values", None):
